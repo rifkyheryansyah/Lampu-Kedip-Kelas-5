@@ -182,21 +182,76 @@
     width:78px;height:78px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     position:relative;
-    transition:background .12s ease, box-shadow .12s ease;
+    transition:background .18s ease, box-shadow .18s ease;
   }
   .bulb .core{
     width:34px;height:34px;border-radius:50%;
+    transition:background .18s ease;
+  }
+  .bulb::after{
+    content:'';
+    position:absolute;inset:0;
+    border-radius:50%;
+    border:2.5px solid transparent;
+    opacity:0;
+    pointer-events:none;
   }
   .bulb.a{background:var(--amber-dim);}
   .bulb.a .core{background:#3A2E1C;}
   .bulb.b{background:var(--cyan-dim);}
   .bulb.b .core{background:#152B28;}
-  .bulb.on.a{background:var(--amber);box-shadow:0 0 34px 10px rgba(255,180,84,.55);}
-  .bulb.on.a .core{background:var(--amber-glow);}
-  .bulb.on.b{background:var(--cyan);box-shadow:0 0 34px 10px rgba(87,217,198,.5);}
-  .bulb.on.b .core{background:var(--cyan-glow);}
-  .bulb.on.sync{background:var(--gold)!important;box-shadow:0 0 46px 16px rgba(255,211,77,.65)!important;}
-  .bulb.on.sync .core{background:var(--gold-glow)!important;}
+
+  .bulb.a.flash{background:var(--amber);animation:pulseA .55s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 34px 10px rgba(255,180,84,.55);}
+  .bulb.a.flash .core{background:var(--amber-glow);}
+  .bulb.a.flash::after{border-color:var(--amber);animation:ringA .55s ease-out;}
+
+  .bulb.b.flash{background:var(--cyan);animation:pulseB .75s ease-in-out;box-shadow:0 0 34px 10px rgba(87,217,198,.5);}
+  .bulb.b.flash .core{background:var(--cyan-glow);}
+  .bulb.b.flash::after{border-color:var(--cyan);animation:ringB .75s ease-out;}
+
+  .bulb.sync.flash{background:var(--gold)!important;animation:pulseSync .9s ease-out!important;box-shadow:0 0 46px 16px rgba(255,211,77,.65)!important;}
+  .bulb.sync.flash .core{background:var(--gold-glow)!important;}
+  .bulb.sync.flash::after{border-color:var(--gold);animation:ringSync .9s ease-out;}
+
+  .bulb.sync-hold{background:var(--gold)!important;box-shadow:0 0 40px 14px rgba(255,211,77,.6)!important;}
+  .bulb.sync-hold .core{background:var(--gold-glow)!important;}
+
+  @keyframes pulseA{
+    0%{transform:scale(1);}
+    22%{transform:scale(1.16);}
+    45%{transform:scale(.96);}
+    70%{transform:scale(1.05);}
+    100%{transform:scale(1);}
+  }
+  @keyframes ringA{
+    0%{opacity:.85;transform:scale(.55);}
+    100%{opacity:0;transform:scale(1.9);}
+  }
+  @keyframes pulseB{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.1);}
+    60%{transform:scale(1.02);}
+    100%{transform:scale(1);}
+  }
+  @keyframes ringB{
+    0%{opacity:.75;transform:scale(.6);}
+    100%{opacity:0;transform:scale(2.15);}
+  }
+  @keyframes pulseSync{
+    0%{transform:scale(1);}
+    18%{transform:scale(1.28);}
+    40%{transform:scale(.94);}
+    65%{transform:scale(1.1);}
+    100%{transform:scale(1.02);}
+  }
+  @keyframes ringSync{
+    0%{opacity:.9;transform:scale(.5);}
+    100%{opacity:0;transform:scale(2.6);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .bulb.flash{animation:none!important;}
+    .bulb::after{animation:none!important;}
+  }
 
   .clock-col{display:flex;flex-direction:column;align-items:center;gap:6px;padding-bottom:14px;}
   .clock-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;}
@@ -467,10 +522,13 @@
   }
 
   function flash(el, cls){
-    el.classList.add('on', cls);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add(cls, 'flash');
+    var dur = cls === 'b' ? 750 : (cls === 'sync' ? 900 : 550);
     setTimeout(function(){
-      if(!el.classList.contains('sync-hold')) el.classList.remove('on', cls);
-    }, 420);
+      if(!el.classList.contains('sync-hold')) el.classList.remove('flash');
+    }, dur);
   }
 
   function setup(){
@@ -489,9 +547,9 @@
     state.found = false;
     state.lastTs = null;
     els.clockVal.textContent = '0.0';
-    els.bulbA.classList.remove('on','a','sync');
+    els.bulbA.classList.remove('flash','sync','sync-hold');
     els.bulbA.classList.add('a');
-    els.bulbB.classList.remove('on','b','sync');
+    els.bulbB.classList.remove('flash','sync','sync-hold');
     els.bulbB.classList.add('b');
     resetTimelineDom();
     addTick(0, 'sync');
@@ -564,8 +622,14 @@
   function finishSync(time){
     state.running = false;
     state.found = true;
-    els.bulbA.classList.add('on','sync','sync-hold');
-    els.bulbB.classList.add('on','sync','sync-hold');
+    els.bulbA.classList.add('sync');
+    els.bulbB.classList.add('sync');
+    flash(els.bulbA, 'sync');
+    flash(els.bulbB, 'sync');
+    setTimeout(function(){
+      els.bulbA.classList.add('sync-hold');
+      els.bulbB.classList.add('sync-hold');
+    }, 900);
     els.clockVal.textContent = fmt(time);
     els.startBtn.style.display = '';
     els.startBtn.disabled = true;
